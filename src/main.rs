@@ -3,14 +3,10 @@
 
 mod auth;
 
-// A simple type alias so as to DRY.
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-
 #[tokio::main]
-async fn main() -> Result<()> {
-    println!("VERSION 1");
-
-    let ds_key = auth::request_access();
-    Ok(())
+async fn main() {
+    let dataset_id = "ds001150";
+    if let Err(err) = auth::prepare_repo_access(dataset_id).await {
+        println!("Error: {}", err);
+    }
 }
-
