@@ -1,5 +1,5 @@
 [package]
-name = "openneuro-remote"
+name = "git-annex-remote-openneuro"
 version = "0.1.0"
 edition = "2021"
 
