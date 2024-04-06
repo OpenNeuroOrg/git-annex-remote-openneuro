@@ -61,8 +61,6 @@ pub async fn prepare_repo_access(
     let config: OpenNeuroConfig =
         serde_json::from_str(&data).expect("JSON does not have correct format.");
 
-    dbg!(repo_access_query(dataset_id).to_string());
-
     // HTTP request
     let client = reqwest::Client::new();
     let res = client
@@ -72,9 +70,6 @@ pub async fn prepare_repo_access(
         .body(repo_access_query(dataset_id).to_string())
         .send()
         .await?;
-
-    println!("Response: {}", res.status());
-    println!("Headers: {:#?}\n", res.headers());
 
     let auth_response: PrepareRepoAccess = res.json::<PrepareRepoAccess>().await?;
 
