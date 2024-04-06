@@ -23,9 +23,11 @@ fn repo_access_query(dataset_id: &str) -> Value {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct OpenNeuroConfig {
-    token: String,
     url: String,
+    apikey: String,
+    error_reporting: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -58,6 +60,7 @@ pub async fn prepare_repo_access(
     home_dir.push(".openneuro");
     // Maybe use https://crates.io/crates/config
     let data = fs::read_to_string(home_dir.as_path()).expect("Unable to read file");
+    dbg!(&data);
     let config: OpenNeuroConfig =
         serde_json::from_str(&data).expect("JSON does not have correct format.");
 
@@ -66,7 +69,7 @@ pub async fn prepare_repo_access(
     let res = client
         .post(format!("{}/crn/graphql", config.url))
         .header(CONTENT_TYPE, "application/json")
-        .header(AUTHORIZATION, format!("Bearer {}", config.token))
+        .header(AUTHORIZATION, format!("Bearer {}", config.apikey))
         .body(repo_access_query(dataset_id).to_string())
         .send()
         .await?;
