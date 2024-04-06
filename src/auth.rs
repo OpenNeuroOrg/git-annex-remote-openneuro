@@ -1,5 +1,5 @@
 use hyper::body::Body;
-use hyper::{Method, Request};
+use hyper::{Method, Request, Result};
 use hyper_util::client::legacy::Client;
 use std::fs;
 
@@ -24,7 +24,7 @@ struct PrepareRepoAccessQuery {
     variables: PrepareRepoAccessQueryVariables,
 }
 
-pub fn repo_access_query(dataset_id: String) {
+pub fn repo_access_query(dataset_id: String) -> Result<String> {
     let variables = PrepareRepoAccessQueryVariables {
         datasetId: dataset_id,
     };
