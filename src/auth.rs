@@ -67,7 +67,7 @@ pub async fn prepare_repo_access(
     // HTTP request
     let client = reqwest::Client::new();
     let res = client
-        .post(format!("{}/crn/graphql", config.url))
+        .post(format!("{}crn/graphql", config.url))
         .header(CONTENT_TYPE, "application/json")
         .header(AUTHORIZATION, format!("Bearer {}", config.apikey))
         .body(repo_access_query(dataset_id).to_string())
