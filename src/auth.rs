@@ -1,9 +1,9 @@
 use dirs;
-use hyper::header::AUTHORIZATION;
 use reqwest;
+use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{json, Number, Value};
 use std::fs;
 
 const PREPARE_REPO_ACCESS: &str = "  
@@ -17,7 +17,7 @@ mutation prepareRepoAccess($datasetId: ID!) {
 
 fn repo_access_query(dataset_id: &str) -> Value {
     json!({
-        "mutation": PREPARE_REPO_ACCESS.to_owned(),
+        "query": PREPARE_REPO_ACCESS.to_owned(),
         "variables": { "datasetId": dataset_id }
     })
 }
@@ -28,13 +28,31 @@ struct OpenNeuroConfig {
     url: String,
 }
 
-pub async fn prepare_repo_access(dataset_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+#[derive(Serialize, Deserialize)]
+struct PrepareRepoAccessQuery {
+    endpoint: Number,
+    token: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PrepareRepoAccessData {
+    prepare_repo_access: PrepareRepoAccessQuery,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PrepareRepoAccess {
+    data: PrepareRepoAccessData,
+}
+
+pub async fn prepare_repo_access(
+    dataset_id: &str,
+) -> Result<(String, i64), Box<dyn std::error::Error>> {
     let home = dirs::home_dir();
     let mut home_dir = match home {
         Some(path) => path,
         None => {
-            println!("Error: Path not found.");
-            return Ok(());
+            panic!("Error: Home path not found.");
         }
     };
     home_dir.push(".openneuro");
@@ -43,10 +61,12 @@ pub async fn prepare_repo_access(dataset_id: &str) -> Result<(), Box<dyn std::er
     let config: OpenNeuroConfig =
         serde_json::from_str(&data).expect("JSON does not have correct format.");
 
+    dbg!(repo_access_query(dataset_id).to_string());
+
     // HTTP request
     let client = reqwest::Client::new();
     let res = client
-        .post(config.url)
+        .post(format!("{}/crn/graphql", config.url))
         .header(CONTENT_TYPE, "application/json")
         .header(AUTHORIZATION, format!("Bearer {}", config.token))
         .body(repo_access_query(dataset_id).to_string())
@@ -56,5 +76,10 @@ pub async fn prepare_repo_access(dataset_id: &str) -> Result<(), Box<dyn std::er
     println!("Response: {}", res.status());
     println!("Headers: {:#?}\n", res.headers());
 
-    Ok(())
+    let auth_response: PrepareRepoAccess = res.json::<PrepareRepoAccess>().await?;
+
+    Ok((
+        auth_response.data.prepare_repo_access.token,
+        auth_response.data.prepare_repo_access.endpoint.as_i64().unwrap(),
+    ))
 }
