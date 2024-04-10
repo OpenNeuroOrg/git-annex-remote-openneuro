@@ -96,8 +96,15 @@ struct PrepareRepoAccessData {
 
 #[derive(Serialize, Deserialize)]
 #[derive(Debug)]
+struct Error {
+    message: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[derive(Debug)]
 struct PrepareRepoAccess {
     data: PrepareRepoAccessData,
+    errors: Vec<Error>,
 }
 
 pub async fn prepare_repo_access(
@@ -132,10 +139,12 @@ pub async fn prepare_repo_access(
     // let auth_response: PrepareRepoAccess = serde_json::from_str(ERROR_RESPONSE)?;
     // let _auth_response: PrepareRepoAccess = serde_json::from_str(VALID_RESPONSE)?;
 
-    let retval = match auth_response.data.prepare_repo_access {
+    let PrepareRepoAccess { data, errors } = auth_response;
+
+    let resdata = match data.prepare_repo_access {
         Some(data) => data,
         None => {
-            panic!("Error: No data in response.");
+            panic!("Error: {}", errors[0].message);
         }
     };
 
