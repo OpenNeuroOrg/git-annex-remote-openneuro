@@ -15,6 +15,56 @@ mutation prepareRepoAccess($datasetId: ID!) {
   }
 ";
 
+const VALID_RESPONSE: &str = r#"
+{
+    "data": {
+        "prepareRepoAccess": {"token": "abcdefg", "endpoint": 0}
+    },
+    "errors": [],
+    "extensions": {
+        "openneuro": {
+            "version": "4.22.0"
+        }
+    }
+}
+"#;
+
+const ERROR_RESPONSE: &str = r#"
+{
+    "data": {
+        "prepareRepoAccess": null
+    },
+    "errors": [
+        {
+            "extensions": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "stacktrace": [
+                    "Error: You do not have access to modify this dataset.",
+                    "    at checkDatasetWrite (/srv/packages/openneuro-server/dist/graphql/permissions.js:139:15)",
+                    "    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)",
+                    "    at async prepareRepoAccess (/srv/packages/openneuro-server/dist/graphql/resolvers/git.js:17:5)"
+                ]
+            },
+            "locations": [
+                {
+                    "column": 5,
+                    "line": 3
+                }
+            ],
+            "message": "You do not have access to modify this dataset.",
+            "path": [
+                "prepareRepoAccess"
+            ]
+        }
+    ],
+    "extensions": {
+        "openneuro": {
+            "version": "4.22.0"
+        }
+    }
+}
+"#;
+
 fn repo_access_query(dataset_id: &str) -> Value {
     json!({
         "query": PREPARE_REPO_ACCESS.to_owned(),
@@ -31,6 +81,7 @@ struct OpenNeuroConfig {
 }
 
 #[derive(Serialize, Deserialize)]
+#[derive(Debug)]
 struct PrepareRepoAccessQuery {
     endpoint: Number,
     token: String,
@@ -38,11 +89,13 @@ struct PrepareRepoAccessQuery {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Debug)]
 struct PrepareRepoAccessData {
-    prepare_repo_access: PrepareRepoAccessQuery,
+    prepare_repo_access: Option<PrepareRepoAccessQuery>,
 }
 
 #[derive(Serialize, Deserialize)]
+#[derive(Debug)]
 struct PrepareRepoAccess {
     data: PrepareRepoAccessData,
 }
@@ -75,9 +128,19 @@ pub async fn prepare_repo_access(
         .await?;
 
     let auth_response: PrepareRepoAccess = res.json::<PrepareRepoAccess>().await?;
+    /* Test lines for working offline */
+    // let auth_response: PrepareRepoAccess = serde_json::from_str(ERROR_RESPONSE)?;
+    // let _auth_response: PrepareRepoAccess = serde_json::from_str(VALID_RESPONSE)?;
+
+    let retval = match auth_response.data.prepare_repo_access {
+        Some(data) => data,
+        None => {
+            panic!("Error: No data in response.");
+        }
+    };
 
     Ok((
-        auth_response.data.prepare_repo_access.token,
-        auth_response.data.prepare_repo_access.endpoint.as_i64().unwrap(),
+        resdata.token,
+        resdata.endpoint.as_i64().unwrap(),
     ))
 }
